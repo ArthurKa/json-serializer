@@ -10,10 +10,11 @@ type Register<T extends string = string, U = unknown, V = unknown> = {
 
 const undefinedValue = Symbol('undefinedValue');
 
-class JSONSerializeExecutor {
+class ExtendedJSON {
   constructor(private registers: Register[]) {}
 
   get replacer(): <K extends string>(this: { [V in K]: unknown }, key: K, value: unknown) => unknown {
+    const _this = this;
     const { registers } = this;
     let skipAmount = 0;
 
@@ -31,7 +32,7 @@ class JSONSerializeExecutor {
 
           return {
             __id: id,
-            __value: JSON.stringify(serialize(e)),
+            __value: JSON.stringify(serialize(e), _this.replacer),
           };
         }
       }
@@ -53,7 +54,7 @@ class JSONSerializeExecutor {
       ) {
         for(const { id, deserialize } of this.registers) {
           if(e.__id === id) {
-            const result = deserialize(JSON.parse(e.__value));
+            const result = deserialize(JSON.parse(e.__value, this.reviver));
 
             return result === void 0 ? undefinedValue : result;
           }
@@ -71,20 +72,13 @@ class JSONSerializeExecutor {
       return e;
     };
   }
-}
-
-class ExtendedJSON {
-  private serializeExecutor: JSONSerializeExecutor;
-
-  constructor(registers: Register[]) {
-    this.serializeExecutor = new JSONSerializeExecutor(registers);
-  }
 
   stringify<T>(value: T): (T extends undefined ? undefined : string) {
-    return JSON.stringify(value, this.serializeExecutor.replacer) as any;
+    return JSON.stringify(value, this.replacer) as any;
   }
+
   parse<T>(text: string): T {
-    return JSON.parse(text, this.serializeExecutor.reviver);
+    return JSON.parse(text, this.reviver);
   }
 }
 
@@ -99,28 +93,24 @@ type UniqueIdsCheck<NotUniqueIds extends string> = (
 type AllPredefinedKeys = 'set' | 'map' | 'date' | 'undefined';
 
 export class JSONSerializer<
-  Predefined extends undefined | 'all' | AllPredefinedKeys[] = never,
+  Predefined extends undefined | 'all-predefined' | AllPredefinedKeys[] = never,
   NotUniqueIds extends string = never,
   AllIds extends string = (
-    Predefined extends undefined
-      ? never
-      : (
-        Predefined extends 'all'
-          ? AllPredefinedKeys
-          : Predefined extends unknown[]
-            ? Predefined[number]
-            : never
-      )
+    Predefined extends 'all-predefined'
+      ? AllPredefinedKeys
+      : Predefined extends unknown[]
+        ? Predefined[number]
+        : never
   ),
 > {
   private registers: Register[] = [];
 
-  constructor(e?: Predefined) {
-    if(!e) {
+  constructor(predefined?: Predefined) {
+    if(!predefined) {
       return;
     }
 
-    if(e === 'all' || e.includes('set')) {
+    if(predefined === 'all-predefined' || predefined.includes('set')) {
       this.mutableRegister({
         id: 'set',
         condition: (e): e is Set<unknown> => e instanceof Set,
@@ -128,7 +118,7 @@ export class JSONSerializer<
         deserialize: e => new Set(e),
       });
     }
-    if(e === 'all' || e.includes('map')) {
+    if(predefined === 'all-predefined' || predefined.includes('map')) {
       this.mutableRegister({
         id: 'map',
         condition: (e): e is Map<unknown, unknown> => e instanceof Map,
@@ -136,7 +126,7 @@ export class JSONSerializer<
         deserialize: e => new Map(e),
       });
     }
-    if(e === 'all' || e.includes('date')) {
+    if(predefined === 'all-predefined' || predefined.includes('date')) {
       this.mutableRegister({
         id: 'date',
         condition: (e): e is Date => e instanceof Date,
@@ -144,7 +134,7 @@ export class JSONSerializer<
         deserialize: e => new Date(e),
       });
     }
-    if(e === 'all' || e.includes('undefined')) {
+    if(predefined === 'all-predefined' || predefined.includes('undefined')) {
       this.mutableRegister({
         id: 'undefined',
         condition: e => e === void 0,
@@ -166,12 +156,7 @@ export class JSONSerializer<
     this.registers = [...this.registers, register as Register];
   }
 
-  makeExecutor(...params: UniqueIdsCheck<NotUniqueIds>) {
-    void params;
-    return new JSONSerializeExecutor(this.registers);
-  }
-
-  makeParser(...params: UniqueIdsCheck<NotUniqueIds>) {
+  make(...params: UniqueIdsCheck<NotUniqueIds>) {
     void params;
     return new ExtendedJSON(this.registers);
   }
