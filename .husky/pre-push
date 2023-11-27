@@ -1,0 +1,11 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+currentBrunch=$(git branch --show-current)
+fixupCommits=$(git log "$(git remote)"/"$currentBrunch".."$currentBrunch" --oneline | grep -iE '\bfixup\b' || true)
+
+if [ "$fixupCommits" != "" ]; then
+  echo Some wrong commits to push:
+  echo "$fixupCommits"
+  exit 1
+fi

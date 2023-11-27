@@ -1,0 +1,39 @@
+{
+  "name": "@arthurka/json-serializer",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "ts:noWatch": "tsc --noEmit",
+    "ts": "npm run ts:noWatch -- -w",
+    "dev": "npm run start-checks && tsc -w",
+    "build": "npm run start-checks && rm -rf dist && tsc",
+    "start-checks": "node helpers/start-checks.js",
+    "repo-fix": "node helpers/eslint.js --fix",
+    "prepublishOnly": "node helpers/prepublish-checks.js && npm run build",
+    "prepare": "node -e \"try { require('husky').install(); } catch(e) { if(e.code !== 'MODULE_NOT_FOUND') throw e; }\""
+  },
+  "devDependencies": {
+    "@arthurka/eslint": "3.15.4",
+    "@arthurka/ts-reset": "1.8.0",
+    "@total-typescript/ts-reset": "0.5.1",
+    "@tsconfig/node18-strictest": "1.0.0",
+    "@types/lint-staged": "13.2.0",
+    "@types/node": "18.17.17",
+    "husky": "8.0.3",
+    "lint-staged": "13.2.3",
+    "typescript": "5.1.6"
+  },
+  "author": {
+    "name": "ArthurKa",
+    "email": "arthur.katruk@gmail.com"
+  },
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArthurKa/json-serializer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ArthurKa/json-serializer/issues"
+  },
+  "homepage": "https://github.com/ArthurKa/json-serializer#readme"
+}

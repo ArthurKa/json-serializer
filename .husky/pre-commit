@@ -1,0 +1,26 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+stashPop() {
+  if [ "$IS_STASHABLE" != '' ]; then
+    git stash pop
+  fi
+}
+
+if [ "`git status --porcelain | grep -E "^.M |^\?\? "`" != '' ]; then
+  git commit --allow-empty -nm 'Staged changes'
+  git add .
+  IS_STASHABLE=`git stash create`
+  git reset
+  if [ "$IS_STASHABLE" != '' ]; then
+    git stash push -um 'NON-COMMIT FILES BACKUP'
+  fi
+  git reset --soft @^
+fi
+(
+  npm run start-checks &&
+  node helpers/eslint.js &&
+  npx lint-staged -r --no-stash &&
+  true
+) || (stashPop && false)
+stashPop
