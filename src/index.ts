@@ -1,11 +1,11 @@
 type Register<T extends string = string, U = unknown, V = unknown> = {
   id: T;
   condition: (
-    | ((e: unknown) => e is U)
-    | ((e: unknown) => boolean)
+    | ((value: unknown, key: string) => value is U)
+    | ((value: unknown, key: string) => boolean)
   );
-  serialize: (e: U) => V;
-  deserialize: (e: V) => unknown;
+  serialize: (value: U) => V;
+  deserialize: (value: V) => unknown;
 };
 
 const undefinedValue = Symbol('undefinedValue');
@@ -15,15 +15,23 @@ class JSONSerializeExecutor {
 
   get replacer(): <K extends string>(this: { [V in K]: unknown }, key: K, value: unknown) => unknown {
     const { registers } = this;
+    let skipAmount = 0;
 
     return function(key, val) {
       const e = this[key];
 
+      if(skipAmount) {
+        skipAmount--;
+        return val;
+      }
+
       for(const { condition, serialize, id } of registers) {
-        if(condition(e)) {
+        if(condition(e, key)) {
+          skipAmount = 2;
+
           return {
             __id: id,
-            __value: serialize(e),
+            __value: JSON.stringify(serialize(e)),
           };
         }
       }
@@ -40,10 +48,12 @@ class JSONSerializeExecutor {
           && '__id' in e
           && '__value' in e
           && typeof e.__id === 'string'
+          && typeof e.__value === 'string'
+          && Object.keys(e).length === 2
       ) {
         for(const { id, deserialize } of this.registers) {
           if(e.__id === id) {
-            const result = deserialize(e.__value);
+            const result = deserialize(JSON.parse(e.__value));
 
             return result === void 0 ? undefinedValue : result;
           }
